@@ -2,9 +2,8 @@ name: Diablo 4 Data Scraper
 
 on:
   schedule:
-    # Gira ogni 10 minuti automaticamente
     - cron: '*/10 * * * *'
-  workflow_dispatch: # Ti permette di avviarlo anche a mano se vuoi testarlo
+  workflow_dispatch:
 
 jobs:
   scrape:
@@ -15,18 +14,8 @@ jobs:
 
     - name: Recupera dati aggiornati sui timer
       run: |
-        # Creiamo un file unico con i timestamp aggiornati interrogando le fonti note
-        echo "{" > data.json
-        
-        # Estrarre il tempo dell'Helltide da d4armory / fonti pubbliche
-        echo '  "helltide": '$(curl -s "https://d4armory.io/api/events" | jq '.helltide // {}')',' >> data.json
-        
-        # Estrarre il tempo del World Boss
-        echo '  "boss": '$(curl -s "https://d4armory.io/api/events" | jq '.boss // {}')',' >> data.json
-        
-        # Aggiungiamo un timestamp di controllo per verificare l'ultimo aggiornamento del bot
-        echo '  "last_updated": '$(date +%s) >> data.json
-        echo "}" >> data.json
+        # Scarica i dati puliti direttamente dall'API alternativa stabili
+        curl -s "https://api.d4gg.io/v1/events" -o data.json
 
     - name: Salva e pubblica i dati aggiornati
       run: |
