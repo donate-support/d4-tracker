@@ -98,15 +98,15 @@
             const response = await fetch('./data.json?t=' + Date.now());
             const data = await response.json();
             
-            // Lettura nuova struttura dati di d4gg.io
-            if (data.boss) {
+            // Struttura pulita di WorldOfSanctuary (timestamp in secondi, convertiamo in ms (*1000))
+            if (data.boss && data.boss.expected) {
                 bossTargetTime = data.boss.expected * 1000;
                 document.getElementById('boss-name').innerText = data.boss.name || "Boss Confermato";
             }
             
-            if (data.helltide) {
+            if (data.helltide && data.helltide.expected) {
                 helltideTargetTime = data.helltide.expected * 1000;
-                document.getElementById('helltide-zone').innerText = data.helltide.zone ? "Zona: " + data.helltide.zone : "Marea Infernale";
+                document.getElementById('helltide-zone').innerText = data.helltide.zone ? "Zona: " + data.helltide.zone : "Marea attiva/imminente";
             }
         } catch (e) {
             console.error("Errore lettura JSON:", e);
@@ -128,7 +128,6 @@
             const bossDiff = bossTargetTime - now;
             document.getElementById('boss-timer').innerText = formatCountdown(bossDiff);
             
-            // Allarme 10 minuti prima
             if (bossDiff > 0 && bossDiff <= 600000 && !bossAlertFired) {
                 if (audioEnabled) alertSound.play();
                 bossAlertFired = true;
@@ -140,7 +139,6 @@
             const helltideDiff = helltideTargetTime - now;
             document.getElementById('helltide-timer').innerText = formatCountdown(helltideDiff);
 
-            // Allarme 5 minuti prima
             if (helltideDiff > 0 && helltideDiff <= 300000 && !helltideAlertFired) {
                 if (audioEnabled) alertSound.play();
                 helltideAlertFired = true;
@@ -150,7 +148,7 @@
     }
 
     fetchTimers();
-    setInterval(fetchTimers, 60000); // Controlla aggiornamenti file ogni minuto
+    setInterval(fetchTimers, 60000);
     setInterval(updateCountdowns, 1000);
 </script>
 
