@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D4 Live Tracker</title>
+    <style>
+        body {
+            background-color: #0f0f12;
+            color: #d1d1d6;
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+        }
+        .card {
+            background-color: #1c1c1e;
+            border: 1px solid #3a3a3c;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        .boss-card { border-left: 5px solid #ff453a; }
+        .helltide-card { border-left: 5px solid #ff9f0a; }
+        h2 { margin: 0 0 10px 0; font-size: 1.4rem; color: #fff; }
+        .timer { font-size: 2.5rem; font-weight: 700; font-variant-numeric: tabular-nums; margin: 15px 0; }
+        .boss-card .timer { color: #ff453a; }
+        .helltide-card .timer { color: #ff9f0a; }
+        button {
+            background-color: #2c2c2e;
+            color: #fff;
+            border: 1px solid #48484a;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            width: 100%;
+        }
+        button:hover { background-color: #3a3a3c; }
+        .status-badge { font-size: 0.9rem; margin-bottom: 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="status-badge" id="audio-status" style="color: #ff453a;">Audio Disattivato 🔇 (Clicca sotto per abilitarlo)</div>
+    <button id="enable-audio" style="margin-bottom: 30px;">Abilita Alert Sonori</button>
+
+    <!-- CARD WORLD BOSS -->
+    <div class="card boss-card">
+        <h2>Prossimo World Boss</h2>
+        <div class="timer" id="boss-timer">--:--:--</div>
+        <div id="boss-name" style="color: #aeaeae; font-style: italic;">Caricamento...</div>
+    </div>
+
+    <!-- CARD HELLTIDE -->
+    <div class="card helltide-card">
+        <h2>Marea Infernale (Helltide)</h2>
+        <div class="timer" id="helltide-timer">--:--:--</div>
+        <div id="helltide-zone" style="color: #aeaeae; font-style: italic;">Caricamento...</div>
+    </div>
+</div>
+
+<!-- Suono di Alert -->
+<audio id="alert-sound" src="https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg" preload="auto"></audio>
+
+<script>
+    let audioEnabled = false;
+    let bossAlertFired = false;
+    let helltideAlertFired = false;
+    
+    let bossTargetTime = 0;
+    let helltideTargetTime = 0;
+
+    const alertSound = document.getElementById('alert-sound');
+    
+    // Sblocco audio per i browser
+    document.getElementById('enable-audio').addEventListener('click', function() {
+        audioEnabled = true;
+        const badge = document.getElementById('audio-status');
+        badge.innerText = "Alert Audio Attivi 🔊";
+        badge.style.color = "#30d158";
+        this.style.display = 'none';
+        alertSound.play().then(() => alertSound.pause());
+    });
+
+    // Funzione per recuperare i dati generati dallo scraper nel nostro stesso spazio web
+    async function fetchTimers() {
+        try {
+            // Raggiunge il file json locale generato dall'Action di GitHub
+            const response = await fetch('./data.json?t=' + Date.now());
+            const data = await response.json();
+            
+            // d4armory restituisce il timestamp dell'evento
+            if(data.boss && data.boss.timestamp) {
+                bossTargetTime = data.boss.timestamp * 1000; 
+                document.getElementById('boss-name').innerText = data.boss.name || "Boss in arrivo";
+            }
+            if(data.helltide && data.helltide.timestamp) {
+                helltideTargetTime = data.helltide.timestamp * 1000;
+                document.getElementById('helltide-zone').innerText = data.helltide.zone ? "Zona: " + data.helltide.zone : "In arrivo";
+            }
+        } catch (e) {
+            console.error("Errore nel recupero dei dati dinamici, riprovo...", e);
+        }
+    }
+
+    function formatCountdown(distance) {
+        if (distance < 0) return "IN CORSO";
+        const hours = Math.floor((distance / (1000 * 60 * 60)));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    function updateCountdowns() {
+        const now = Date.now();
+
+        // Gestione Boss
+        if (bossTargetTime > 0) {
+            const bossDiff = bossTargetTime - now;
+            document.getElementById('boss-timer').innerText = formatCountdown(bossDiff);
+            
+            // Suona 10 minuti prima dello spawn
+            if (bossDiff > 0 && bossDiff <= 600000 && !bossAlertFired) {
+                if (audioEnabled) alertSound.play();
+                bossAlertFired = true;
+            }
+            if (bossDiff > 600000 || bossDiff < 0) bossAlertFired = false;
+        }
+
+        // Gestione Helltide
+        if (helltideTargetTime > 0) {
+            const helltideDiff = helltideTargetTime - now;
+            document.getElementById('helltide-timer').innerText = formatCountdown(helltideDiff);
+
+            // Suona 5 minuti prima dell'Helltide
+            if (helltideDiff > 0 && helltideDiff <= 300000 && !helltideAlertFired) {
+                if (audioEnabled) alertSound.play();
+                helltideAlertFired = true;
+            }
+            if (helltideDiff > 300000 || helltideDiff < 0) helltideAlertFired = false;
+        }
+    }
+
+    // Carica i dati all'avvio e poi ogni 5 minuti
+    fetchTimers();
+    setInterval(fetchTimers, 300000);
+
+    // Aggiorna la grafica del timer ogni secondo
+    setInterval(updateCountdowns, 1000);
+</script>
+
+</body>
+</html>
