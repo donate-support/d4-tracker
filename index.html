@@ -61,18 +61,17 @@
     <div class="card boss-card">
         <h2>Prossimo World Boss</h2>
         <div class="timer" id="boss-timer">--:--:--</div>
-        <div id="boss-name" style="color: #aeaeae; font-style: italic;">Caricamento...</div>
+        <div id="boss-name" style="color: #aeaeae; font-style: italic;">In attesa di dati...</div>
     </div>
 
     <!-- CARD HELLTIDE -->
     <div class="card helltide-card">
         <h2>Marea Infernale (Helltide)</h2>
         <div class="timer" id="helltide-timer">--:--:--</div>
-        <div id="helltide-zone" style="color: #aeaeae; font-style: italic;">Caricamento...</div>
+        <div id="helltide-zone" style="color: #aeaeae; font-style: italic;">In attesa di dati...</div>
     </div>
 </div>
 
-<!-- Suono di Alert -->
 <audio id="alert-sound" src="https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg" preload="auto"></audio>
 
 <script>
@@ -85,7 +84,6 @@
 
     const alertSound = document.getElementById('alert-sound');
     
-    // Sblocco audio per i browser
     document.getElementById('enable-audio').addEventListener('click', function() {
         audioEnabled = true;
         const badge = document.getElementById('audio-status');
@@ -95,24 +93,23 @@
         alertSound.play().then(() => alertSound.pause());
     });
 
-    // Funzione per recuperare i dati generati dallo scraper nel nostro stesso spazio web
     async function fetchTimers() {
         try {
-            // Raggiunge il file json locale generato dall'Action di GitHub
             const response = await fetch('./data.json?t=' + Date.now());
             const data = await response.json();
             
-            // d4armory restituisce il timestamp dell'evento
-            if(data.boss && data.boss.timestamp) {
-                bossTargetTime = data.boss.timestamp * 1000; 
-                document.getElementById('boss-name').innerText = data.boss.name || "Boss in arrivo";
+            // Lettura nuova struttura dati di d4gg.io
+            if (data.boss) {
+                bossTargetTime = data.boss.expected * 1000;
+                document.getElementById('boss-name').innerText = data.boss.name || "Boss Confermato";
             }
-            if(data.helltide && data.helltide.timestamp) {
-                helltideTargetTime = data.helltide.timestamp * 1000;
-                document.getElementById('helltide-zone').innerText = data.helltide.zone ? "Zona: " + data.helltide.zone : "In arrivo";
+            
+            if (data.helltide) {
+                helltideTargetTime = data.helltide.expected * 1000;
+                document.getElementById('helltide-zone').innerText = data.helltide.zone ? "Zona: " + data.helltide.zone : "Marea Infernale";
             }
         } catch (e) {
-            console.error("Errore nel recupero dei dati dinamici, riprovo...", e);
+            console.error("Errore lettura JSON:", e);
         }
     }
 
@@ -127,12 +124,11 @@
     function updateCountdowns() {
         const now = Date.now();
 
-        // Gestione Boss
         if (bossTargetTime > 0) {
             const bossDiff = bossTargetTime - now;
             document.getElementById('boss-timer').innerText = formatCountdown(bossDiff);
             
-            // Suona 10 minuti prima dello spawn
+            // Allarme 10 minuti prima
             if (bossDiff > 0 && bossDiff <= 600000 && !bossAlertFired) {
                 if (audioEnabled) alertSound.play();
                 bossAlertFired = true;
@@ -140,12 +136,11 @@
             if (bossDiff > 600000 || bossDiff < 0) bossAlertFired = false;
         }
 
-        // Gestione Helltide
         if (helltideTargetTime > 0) {
             const helltideDiff = helltideTargetTime - now;
             document.getElementById('helltide-timer').innerText = formatCountdown(helltideDiff);
 
-            // Suona 5 minuti prima dell'Helltide
+            // Allarme 5 minuti prima
             if (helltideDiff > 0 && helltideDiff <= 300000 && !helltideAlertFired) {
                 if (audioEnabled) alertSound.play();
                 helltideAlertFired = true;
@@ -154,11 +149,8 @@
         }
     }
 
-    // Carica i dati all'avvio e poi ogni 5 minuti
     fetchTimers();
-    setInterval(fetchTimers, 300000);
-
-    // Aggiorna la grafica del timer ogni secondo
+    setInterval(fetchTimers, 60000); // Controlla aggiornamenti file ogni minuto
     setInterval(updateCountdowns, 1000);
 </script>
 
