@@ -1,0 +1,36 @@
+name: Diablo 4 Data Scraper
+
+on:
+  schedule:
+    # Gira ogni 10 minuti automaticamente
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Ti permette di avviarlo anche a mano se vuoi testarlo
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Controlla il codice nel repository
+      uses: actions/checkout@v4
+
+    - name: Recupera dati aggiornati sui timer
+      run: |
+        # Creiamo un file unico con i timestamp aggiornati interrogando le fonti note
+        echo "{" > data.json
+        
+        # Estrarre il tempo dell'Helltide da d4armory / fonti pubbliche
+        echo '  "helltide": '$(curl -s "https://d4armory.io/api/events" | jq '.helltide // {}')',' >> data.json
+        
+        # Estrarre il tempo del World Boss
+        echo '  "boss": '$(curl -s "https://d4armory.io/api/events" | jq '.boss // {}')',' >> data.json
+        
+        # Aggiungiamo un timestamp di controllo per verificare l'ultimo aggiornamento del bot
+        echo '  "last_updated": '$(date +%s) >> data.json
+        echo "}" >> data.json
+
+    - name: Salva e pubblica i dati aggiornati
+      run: |
+        git config --global user.name "D4TrackerBot"
+        git config --global user.email "bot@d4tracker.local"
+        git add data.json
+        git diff --quiet && git diff --staged --quiet || (git commit -m "Aggiornamento automatico timer D4" && git push)
