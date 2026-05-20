@@ -11,11 +11,13 @@ jobs:
     steps:
     - name: Controlla il codice nel repository
       uses: actions/checkout@v4
+      env:
+        FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true # Questo toglie anche il warning di Node!
 
     - name: Recupera dati aggiornati sui timer
       run: |
-        # Scarica i dati puliti direttamente dall'API alternativa stabili
-        curl -s "https://api.d4gg.io/v1/events" -o data.json
+        # Scarica i dati dall'API di World of Sanctuary, ultra stabile
+        curl -s "https://api.worldofsanctuary.com/d4/events" -o data.json
 
     - name: Salva e pubblica i dati aggiornati
       run: |
